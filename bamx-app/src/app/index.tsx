@@ -1,6 +1,7 @@
 import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
 import { AnimatedIcon } from '@/components/animated-icon';
 import { HintRow } from '@/components/hint-row';
@@ -13,6 +14,7 @@ function getDevMenuHint() {
   if (Platform.OS === 'web') {
     return <ThemedText type="small">use browser devtools</ThemedText>;
   }
+
   if (Device.isDevice) {
     return (
       <ThemedText type="small">
@@ -20,7 +22,9 @@ function getDevMenuHint() {
       </ThemedText>
     );
   }
+
   const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+
   return (
     <ThemedText type="small">
       press <ThemedText type="code">{shortcut}</ThemedText>
@@ -34,6 +38,7 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.safeArea}>
         <ThemedView style={styles.heroSection}>
           <AnimatedIcon />
+
           <ThemedText type="title" style={styles.title}>
             Welcome to&nbsp;Expo
           </ThemedText>
@@ -43,12 +48,23 @@ export default function HomeScreen() {
           get started
         </ThemedText>
 
+        <Pressable
+          style={styles.formsButton}
+          onPress={() => router.push('/forms')}
+        >
+          <ThemedText style={styles.formsButtonText}>
+            Forms
+          </ThemedText>
+        </Pressable>
+
         <ThemedView type="backgroundElement" style={styles.stepContainer}>
           <HintRow
             title="Try editing"
             hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
           />
+
           <HintRow title="Dev tools" hint={getDevMenuHint()} />
+
           <HintRow
             title="Fresh start"
             hint={<ThemedText type="code">npm run reset-project</ThemedText>}
@@ -67,6 +83,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
   },
+
   safeArea: {
     flex: 1,
     paddingHorizontal: Spacing.four,
@@ -75,6 +92,7 @@ const styles = StyleSheet.create({
     paddingBottom: BottomTabInset + Spacing.three,
     maxWidth: MaxContentWidth,
   },
+
   heroSection: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -82,12 +100,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     gap: Spacing.four,
   },
+
   title: {
     textAlign: 'center',
   },
+
   code: {
     textTransform: 'uppercase',
   },
+
+  formsButton: {
+    backgroundColor: '#2e7d32',
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+  },
+
+  formsButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
   stepContainer: {
     gap: Spacing.three,
     alignSelf: 'stretch',
