@@ -10,10 +10,15 @@ import {
 } from "react-native";
 
 export default function FormularioRecepcion() {
-  const [producto, setProducto] = useState("");
-  const [cantidad, setCantidad] = useState("");
-  const [unidad, setUnidad] = useState("");
-  const [procedencia, setProcedencia] = useState("");
+    const [producto, setProducto] = useState("");
+    const [cantidad, setCantidad] = useState("");
+    const [unidad, setUnidad] = useState("");
+    const [procedencia, setProcedencia] = useState("");
+    const [Numero_asignado, setNum_Asing] = useState("");
+    const [Fecha, setFecha] = useState("");
+    const [Nombre, setNombre] = useState("");
+    const [procedenci, setProcedenci] = useState("");
+
 
   const enviarFormulario = () => {
     if (!producto || !cantidad || !unidad || !procedencia) {
@@ -51,15 +56,6 @@ export default function FormularioRecepcion() {
         <TextInput
           style={styles.input}
           placeholder="Ej. 01"
-          value={producto}
-          onChangeText={setProducto}
-        />
-
-        <Text style={styles.label}>Fecha</Text>
-    
-        <TextInput
-          style={styles.input}
-          placeholder="Aqui cambiar el metodo de poner la fecha"
           value={producto}
           onChangeText={setProducto}
         />
