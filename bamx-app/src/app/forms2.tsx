@@ -43,7 +43,7 @@ export default function FormularioRecepcion() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.titulo}>Recepción de productos</Text>
+      <Text style={styles.titulo}>El pepe</Text>
 
       <Text style={styles.subtitulo}>
         Ingresa la información del producto recibido

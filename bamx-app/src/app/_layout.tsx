@@ -27,7 +27,20 @@ export default function RootLayout() {
             title: 'Forms',
           }}
         />
+                <Stack.Screen
+          name="forms2"
+          options={{
+            title: 'Forms2',
+          }}
+        />
 
+
+                <Stack.Screen
+          name="forms3"
+          options={{
+            title: 'Forms3',
+          }}
+        />
         <Stack.Screen
           name="explore"
           options={{

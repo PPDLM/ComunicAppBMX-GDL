@@ -56,6 +56,15 @@ export default function HomeScreen() {
             Forms
           </ThemedText>
         </Pressable>
+        
+        <Pressable
+          style={styles.formsButton}
+          onPress={() => router.push('/forms2')}
+        >
+          <ThemedText style={styles.formsButtonText}>
+            Forms2
+          </ThemedText>
+        </Pressable>
 
         <ThemedView type="backgroundElement" style={styles.stepContainer}>
           <HintRow
