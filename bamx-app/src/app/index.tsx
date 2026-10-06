@@ -66,6 +66,16 @@ export default function HomeScreen() {
           </ThemedText>
         </Pressable>
 
+        <Pressable
+          accessibilityRole="button"
+          style={styles.formsButton}
+          onPress={() => router.push('/orders/index')}
+        >
+          <ThemedText style={styles.formsButtonText}>
+            Pedidos
+          </ThemedText>
+        </Pressable>
+
         <ThemedView type="backgroundElement" style={styles.stepContainer}>
           <HintRow
             title="Try editing"
