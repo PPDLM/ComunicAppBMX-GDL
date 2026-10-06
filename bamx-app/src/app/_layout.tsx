@@ -41,6 +41,10 @@ export default function RootLayout() {
             title: 'Explore',
           }}
         />
+        
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="admin/index" options={{ headerShown: false }} />
+        <Stack.Screen name="admin/crear-cuenta" options={{ headerShown: false }} />
       </Stack>
     </ThemeProvider>
   );
