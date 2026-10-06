@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 
 import { CATEGORIES, DISCARD_REASONS, UNITS } from '@/lib/domain';
-import { num, parseDateOnly, uuid } from '@/lib/format';
+import { MAX, cleanText, num, parseDateOnly, uuid } from '@/lib/format';
 import type { ItemInput } from '@/lib/offline';
 import { Button, C, Card, Chips, Field, Muted } from './ui';
 
@@ -50,16 +50,19 @@ export function validateDrafts(
   drafts.forEach((d, i) => {
     const n = `Producto ${i + 1}`;
     const qty = num(d.quantity);
-    const unit = d.unit.trim();
+    const unit = cleanText(d.unit, 30);
+    const name = cleanText(d.name, MAX.short);
+    const customCategory = cleanText(d.customCategory, 60);
+    const LIMIT = 100000; // kg / units per line: rejects absurd or negative values
     const kg = isKg(unit) && stage === 'STATED' ? qty : num(d.kg);
     const discarded = d.discardedKg.trim() ? num(d.discardedKg) : 0;
-    if (!d.name.trim()) errors.push(`${n}: falta el nombre.`);
-    if (d.category === 'Otro' && !d.customCategory.trim()) errors.push(`${n}: escribe la categoría.`);
-    if (qty === null || qty <= 0) errors.push(`${n}: cantidad inválida.`);
+    if (!name) errors.push(`${n}: falta el nombre.`);
+    if (d.category === 'Otro' && !customCategory) errors.push(`${n}: escribe la categoría.`);
+    if (qty === null || qty <= 0 || qty > LIMIT) errors.push(`${n}: cantidad inválida.`);
     if (!unit) errors.push(`${n}: falta la unidad.`);
-    if (kg === null || kg < 0) errors.push(`${n}: ${stage === 'STATED' ? 'kg estimados' : 'kg útiles'} inválidos.`);
+    if (kg === null || kg < 0 || kg > LIMIT) errors.push(`${n}: ${stage === 'STATED' ? 'kg estimados' : 'kg útiles'} inválidos.`);
     if (stage === 'REVIEWED') {
-      if (discarded === null || discarded < 0) errors.push(`${n}: kg descartados inválidos.`);
+      if (discarded === null || discarded < 0 || discarded > LIMIT) errors.push(`${n}: kg descartados inválidos.`);
       if ((discarded ?? 0) > 0 && !d.discardReason) errors.push(`${n}: indica el motivo del descarte.`);
       if (d.expiryDate.trim() && !parseDateOnly(d.expiryDate)) errors.push(`${n}: caducidad debe ser AAAA-MM-DD.`);
     }
@@ -67,9 +70,9 @@ export function validateDrafts(
     items.push({
       id: d.id,
       stage,
-      name: d.name.trim(),
+      name,
       category: d.category,
-      customCategory: d.category === 'Otro' ? d.customCategory.trim() : null,
+      customCategory: d.category === 'Otro' ? customCategory : null,
       quantity: qty!,
       unit,
       kg: kg!,
@@ -111,7 +114,7 @@ export function ItemsEditor({
             </View>
             {d.statedHint ? <Muted style={{ marginBottom: 8 }}>Declarado por chofer: {d.statedHint}</Muted> : null}
 
-            <Field label="Nombre" value={d.name} onChangeText={(v) => set(i, { name: v })} placeholder="Ej. Arroz" />
+            <Field label="Nombre" maxLength={MAX.short} value={d.name} onChangeText={(v) => set(i, { name: v })} placeholder="Ej. Arroz" />
 
             <Text style={{ fontWeight: '600', marginBottom: 6 }}>Categoría</Text>
             <Chips options={CATEGORIES} value={d.category as (typeof CATEGORIES)[number]} onChange={(v) => set(i, { category: v })} />

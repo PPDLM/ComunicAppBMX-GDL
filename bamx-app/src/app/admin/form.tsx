@@ -6,7 +6,7 @@ import { Screen } from '@/components/screen';
 import { Button, C, Card, ErrorBox, Field, H2, Loading, Muted } from '@/components/ui';
 import { type AdminUser, createDonation, listUsers, updateDonation } from '@/lib/admin';
 import { api, errorMessage, must, type Donation } from '@/lib/client';
-import { parseLocalInput, toLocalInput } from '@/lib/format';
+import { MAX, cleanText, parseLocalInput, toLocalInput } from '@/lib/format';
 import { useUser } from '@/lib/session';
 
 function at(daysFromToday: number, hour: number) {
@@ -60,8 +60,8 @@ export default function DonationForm() {
 
   const scheduledIso = parseLocalInput(scheduled);
   const errors = {
-    donorName: !donorName.trim() ? 'Requerido' : null,
-    pickupAddress: !pickupAddress.trim() ? 'Requerido' : null,
+    donorName: !cleanText(donorName) ? 'Requerido' : null,
+    pickupAddress: !cleanText(pickupAddress, MAX.address) ? 'Requerido' : null,
     scheduled: !scheduledIso ? 'Formato: AAAA-MM-DD HH:MM' : null,
   };
   const valid = !errors.donorName && !errors.pickupAddress && !errors.scheduled;
@@ -73,11 +73,11 @@ export default function DonationForm() {
     try {
       const driver = drivers.find((d) => d.sub === driverId);
       const input = {
-        donorName: donorName.trim(),
-        pickupAddress: pickupAddress.trim(),
+        donorName: cleanText(donorName, MAX.short),
+        pickupAddress: cleanText(pickupAddress, MAX.address),
         scheduledAt: scheduledIso!,
-        requestedContents: requestedContents.trim() || null,
-        adminNotes: adminNotes.trim() || null,
+        requestedContents: cleanText(requestedContents, MAX.long) || null,
+        adminNotes: cleanText(adminNotes, MAX.long) || null,
         driverId: driverId,
         driverName: driverId ? (driver?.name || driver?.email || prev?.driverName || null) : null,
       };
@@ -102,6 +102,7 @@ export default function DonationForm() {
         <H2>{prev ? 'Editar donación' : 'Nueva donación'}</H2>
         <Field
           label="Donante *"
+          maxLength={MAX.short}
           value={donorName}
           onChangeText={setDonorName}
           placeholder="Ej. Walmart Av. Patria"
@@ -109,6 +110,7 @@ export default function DonationForm() {
         />
         <Field
           label="Dirección de recolección *"
+          maxLength={MAX.address}
           value={pickupAddress}
           onChangeText={setPickupAddress}
           placeholder="Calle, número, colonia, municipio"
@@ -137,12 +139,13 @@ export default function DonationForm() {
         </View>
         <Field
           label="Contenido reportado por el donante (opcional)"
+          maxLength={MAX.long}
           value={requestedContents}
           onChangeText={setRequestedContents}
           placeholder="Lo que dijo al llamar, si aplica"
           multiline
         />
-        <Field label="Notas (opcional)" value={adminNotes} onChangeText={setAdminNotes} multiline />
+        <Field label="Notas (opcional)" maxLength={MAX.long} value={adminNotes} onChangeText={setAdminNotes} multiline />
       </Card>
 
       <Card>

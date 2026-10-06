@@ -1,0 +1,9 @@
+# MASVS-CODE-3: weekly check of npm dependencies for known vulnerabilities and updates.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /bamx-app
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencies, security]

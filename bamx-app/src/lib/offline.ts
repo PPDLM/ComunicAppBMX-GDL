@@ -70,6 +70,19 @@ export async function cacheSet<T>(key: string, data: T) {
   }
 }
 
+/**
+ * Deletes every cached read (donations, items, addresses, notes) from the device.
+ * Called on sign-out so a lost or shared phone keeps no donor data (MASVS-STORAGE-1 / PRIVACY-1).
+ */
+export async function clearCache() {
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    await AsyncStorage.multiRemove(keys.filter((k) => k.startsWith('cache:')));
+  } catch {
+    // best effort
+  }
+}
+
 export async function cacheGet<T>(key: string): Promise<Cached<T> | null> {
   try {
     const raw = await AsyncStorage.getItem(`cache:${key}`);

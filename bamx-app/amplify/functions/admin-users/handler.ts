@@ -127,9 +127,11 @@ export const handler: Schema['adminUsers']['functionHandler'] = async (event) =>
     case 'create': {
       const e = assertEmail(email);
       const r = assertRole(role);
-      if (!temporaryPassword || temporaryPassword.length < 8) {
-        throw new Error('La contraseña temporal debe tener al menos 8 caracteres');
+      if (!temporaryPassword || temporaryPassword.length < 10) {
+        throw new Error('La contraseña temporal debe tener al menos 10 caracteres');
       }
+      // Server-side re-validation (never trust the client): plain text name, bounded length.
+      const cleanName = (name ?? '').replace(/[\u0000-\u001F\u007F<>]/g, '').trim().slice(0, 120);
       const res = await client.send(
         new sdk.AdminCreateUserCommand({
           UserPoolId: poolId(),
@@ -139,7 +141,7 @@ export const handler: Schema['adminUsers']['functionHandler'] = async (event) =>
           UserAttributes: [
             { Name: 'email', Value: e },
             { Name: 'email_verified', Value: 'true' },
-            { Name: 'name', Value: (name ?? '').trim() || e },
+            { Name: 'name', Value: cleanName || e },
           ],
         }),
       );

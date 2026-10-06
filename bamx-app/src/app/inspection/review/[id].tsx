@@ -6,7 +6,7 @@ import { ItemsEditor, validateDrafts, type ItemDraft } from '@/components/item-e
 import { Screen } from '@/components/screen';
 import { Button, Card, ErrorBox, Field, H2, Loading, Muted, Row } from '@/components/ui';
 import { categoryLabel } from '@/lib/domain';
-import { fmtKg, uuid } from '@/lib/format';
+import { MAX, cleanText, fmtKg, uuid } from '@/lib/format';
 import { cacheGet, enqueue } from '@/lib/offline';
 import { donationDetail, type DonationDetail } from '@/lib/queries';
 import { useUser } from '@/lib/session';
@@ -90,7 +90,7 @@ export default function ReviewForm() {
                 by: { id: user.sub, name: user.name || user.email },
                 attempts: 0,
                 items,
-                inspectionNotes: notes.trim() || undefined,
+                inspectionNotes: cleanText(notes, MAX.long) || undefined,
               });
               router.back();
             } finally {
@@ -115,7 +115,7 @@ export default function ReviewForm() {
       </Card>
       <ItemsEditor drafts={drafts} onChange={setDrafts} mode="REVIEWED" />
       <Card style={{ marginTop: 12 }}>
-        <Field label="Notas de inspección (opcional)" value={notes} onChangeText={setNotes} multiline />
+        <Field label="Notas de inspección (opcional)" maxLength={MAX.long} value={notes} onChangeText={setNotes} multiline />
       </Card>
       {errors.length ? <ErrorBox text={errors.join('\n')} /> : null}
       <Button title="Guardar revisión y cerrar" onPress={submit} loading={saving} />

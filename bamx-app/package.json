@@ -51,7 +51,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "audit": "npm audit --omit=dev --audit-level=high"
   },
   "private": true,
   "allowScripts": {

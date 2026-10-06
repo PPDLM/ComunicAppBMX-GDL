@@ -16,3 +16,16 @@ const { cfnUserPool } = backend.auth.resources.cfnResources;
 cfnUserPool.adminCreateUserConfig = {
   allowAdminCreateUserOnly: true,
 };
+
+// Password policy (MASVS-AUTH-1): stronger than the Cognito default (8 chars),
+// and temporary passwords handed out by the admin expire after 3 days.
+cfnUserPool.policies = {
+  passwordPolicy: {
+    minimumLength: 10,
+    requireLowercase: true,
+    requireUppercase: true,
+    requireNumbers: true,
+    requireSymbols: true,
+    temporaryPasswordValidityDays: 3,
+  },
+};

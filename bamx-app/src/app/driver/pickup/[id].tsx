@@ -6,7 +6,7 @@ import { ItemsEditor, emptyDraft, validateDrafts, type ItemDraft } from '@/compo
 import { PhotoField, PhotoList } from '@/components/photo';
 import { Screen } from '@/components/screen';
 import { Button, Card, ErrorBox, Field, H2, Loading, Muted } from '@/components/ui';
-import { uuid } from '@/lib/format';
+import { MAX, cleanText, uuid } from '@/lib/format';
 import { cacheGet, enqueue } from '@/lib/offline';
 import type { DonationDetail } from '@/lib/queries';
 import { useUser } from '@/lib/session';
@@ -53,7 +53,7 @@ export default function PickupForm() {
         signatureUri: signature!,
         listUri: listPhoto,
         extraUris: extra,
-        driverNotes: notes.trim() || undefined,
+        driverNotes: cleanText(notes, MAX.long) || undefined,
       });
       Alert.alert('Recolección registrada', 'Se enviará automáticamente (si no hay señal, en cuanto vuelva).');
       router.back();
@@ -94,7 +94,7 @@ export default function PickupForm() {
           onChange={setListPhoto}
         />
         <PhotoList uris={extra} onChange={setExtra} />
-        <Field label="Notas (opcional)" value={notes} onChangeText={setNotes} multiline placeholder="Observaciones de la recolección" />
+        <Field label="Notas (opcional)" maxLength={MAX.long} value={notes} onChangeText={setNotes} multiline placeholder="Observaciones de la recolección" />
       </Card>
 
       {errors.length ? <ErrorBox text={errors.join('\n')} /> : null}

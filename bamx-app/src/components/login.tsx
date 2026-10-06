@@ -12,7 +12,7 @@ function friendly(e: unknown): string {
   if (name === 'NotAuthorizedException' || name === 'UserNotFoundException')
     return 'Correo o contraseña incorrectos.';
   if (name === 'InvalidPasswordException')
-    return 'La contraseña debe tener al menos 8 caracteres, mayúscula, minúscula, número y símbolo.';
+    return 'La contraseña debe tener al menos 10 caracteres, mayúscula, minúscula, número y símbolo.';
   if (/network/i.test(msg)) return 'Sin conexión. Necesitas internet para iniciar sesión la primera vez.';
   return msg;
 }
@@ -92,10 +92,10 @@ export function LoginScreen() {
             <>
               <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 8 }}>Crea tu contraseña</Text>
               <Muted style={{ marginBottom: 12 }}>
-                Es tu primer inicio de sesión. Mínimo 8 caracteres con mayúscula, minúscula, número y símbolo.
+                Es tu primer inicio de sesión. Mínimo 10 caracteres con mayúscula, minúscula, número y símbolo.
               </Muted>
               <Field label="Nueva contraseña" value={newPassword} onChangeText={setNewPassword} secureTextEntry />
-              <Button title="Guardar y entrar" onPress={onNewPassword} loading={busy} disabled={newPassword.length < 8} />
+              <Button title="Guardar y entrar" onPress={onNewPassword} loading={busy} disabled={newPassword.length < 10} />
             </>
           )}
         </Card>
