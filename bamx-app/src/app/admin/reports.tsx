@@ -110,7 +110,12 @@ export default function ReportsScreen() {
 
   const exportCsv = async () => {
     if (!data) return;
-    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    // Quote every cell and neutralize spreadsheet formulas (CSV injection, MASVS-CODE-4).
+    const esc = (v: unknown) => {
+      let t = String(v ?? '');
+      if (/^[=+\-@\t\r]/.test(t)) t = `'${t}`;
+      return `"${t.replace(/"/g, '""')}"`;
+    };
     const rows = [
       ['Fecha programada', 'Donante', 'Dirección', 'Chofer', 'Kg declarados', 'Kg útiles', 'Kg descartados', '% útil'],
       ...data.donations.map((d) => {

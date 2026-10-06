@@ -1,9 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Hub } from 'aws-amplify/utils';
 import { fetchAuthSession, getCurrentUser, signOut as amplifySignOut } from 'aws-amplify/auth';
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 
 import { type Role, isRole } from './domain';
+import { clearCache } from './offline';
+
+/** ADMIN sessions are closed after this much time in the background (MASVS-AUTH-2/3). */
+const ADMIN_IDLE_MS = 15 * 60 * 1000;
 
 export type SessionUser = {
   sub: string;
@@ -83,9 +88,27 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       await amplifySignOut();
     } finally {
       await AsyncStorage.removeItem(CACHE_KEY);
+      await clearCache(); // pending (unsent) operations are kept so field work is never lost
       setState({ status: 'signedOut' });
     }
   }, []);
+
+  // Auto sign-out of an ADMIN session left in the background for 15+ minutes.
+  // Field roles are exempt: they may be offline and could not sign back in without signal.
+  const backgroundSince = useRef<number | null>(null);
+  const role = state.status === 'signedIn' ? state.user.role : null;
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s !== 'active') {
+        backgroundSince.current ??= Date.now();
+        return;
+      }
+      const since = backgroundSince.current;
+      backgroundSince.current = null;
+      if (role === 'ADMIN' && since && Date.now() - since > ADMIN_IDLE_MS) void signOut();
+    });
+    return () => sub.remove();
+  }, [role, signOut]);
 
   useEffect(() => {
     refresh();

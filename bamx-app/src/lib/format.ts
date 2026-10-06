@@ -51,7 +51,26 @@ export function isToday(iso?: string | null) {
 
 export function num(s: string): number | null {
   const v = parseFloat(s.replace(',', '.'));
-  return isNaN(v) ? null : v;
+  return isNaN(v) || !isFinite(v) ? null : v;
+}
+
+/** Text limits (MASVS-CODE-4). */
+export const MAX = { short: 120, address: 300, long: 1000 };
+
+/**
+ * Normalizes untrusted free text before it is stored (MASVS-CODE-4):
+ * removes control characters and HTML angle brackets, collapses whitespace, enforces a max length.
+ * React Native renders text as plain text (no HTML), and AppSync stores it as a typed String,
+ * so this is defense in depth for any future web dashboard or CSV export.
+ */
+export function cleanText(s: string | null | undefined, max = MAX.short): string {
+  return (s ?? '')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .replace(/[<>]/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .trim()
+    .slice(0, max);
 }
 
 /** RFC4122 v4 id; react-native-get-random-values provides crypto.getRandomValues. */

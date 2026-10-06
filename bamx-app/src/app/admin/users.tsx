@@ -14,6 +14,7 @@ import {
 } from '@/lib/admin';
 import { errorMessage } from '@/lib/client';
 import { ROLES, ROLE_LABEL, type Role, isRole } from '@/lib/domain';
+import { MAX, cleanText } from '@/lib/format';
 import { useUser } from '@/lib/session';
 
 /** Temporary password that meets Cognito's default policy (upper, lower, number, symbol). */
@@ -65,7 +66,7 @@ export default function UsersScreen() {
     act(
       'create',
       async () => {
-        await createUser(email.trim().toLowerCase(), name.trim(), role, password);
+        await createUser(email.trim().toLowerCase(), cleanText(name, MAX.short), role, password);
         setShowForm(false);
         setName('');
         setEmail('');
@@ -92,13 +93,13 @@ export default function UsersScreen() {
             value={password}
             onChangeText={setPassword}
             autoCapitalize="none"
-            hint="Mínimo 8 caracteres con mayúscula, minúscula, número y símbolo."
+            hint="Mínimo 10 caracteres con mayúscula, minúscula, número y símbolo. Caduca en 3 días."
           />
           <Button
             title="Crear usuario"
             onPress={onCreate}
             loading={busy === 'create'}
-            disabled={!name.trim() || !email.includes('@') || password.length < 8}
+            disabled={!name.trim() || !email.includes('@') || password.length < 10}
           />
           <Button kind="ghost" title="Cancelar" onPress={() => setShowForm(false)} />
         </Card>

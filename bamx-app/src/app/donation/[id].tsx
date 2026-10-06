@@ -24,7 +24,7 @@ import {
 import { cancelDonation, clearReview, deleteDonation, forceStatus } from '@/lib/admin';
 import { errorMessage } from '@/lib/client';
 import { STATUSES, STATUS_LABEL, TRANSITIONS, type Status } from '@/lib/domain';
-import { fmtDateTime, fmtKg, uuid } from '@/lib/format';
+import { MAX, cleanText, fmtDateTime, fmtKg, uuid } from '@/lib/format';
 import { enqueue, pendingStatus, useCachedQuery, useQueue } from '@/lib/offline';
 import { donationDetail } from '@/lib/queries';
 import { useUser } from '@/lib/session';
@@ -203,7 +203,7 @@ export default function DonationDetailScreen() {
                   title="Confirmar cancelación"
                   disabled={!cancelReason.trim()}
                   loading={busy}
-                  onPress={() => run(() => cancelDonation(d, cancelReason.trim(), user), 'Donación cancelada')}
+                  onPress={() => run(() => cancelDonation(d, cleanText(cancelReason, MAX.long), user), 'Donación cancelada')}
                 />
               </View>
             ) : (
