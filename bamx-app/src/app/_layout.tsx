@@ -1,6 +1,13 @@
-import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
+import 'react-native-get-random-values';
+import { Amplify } from 'aws-amplify';
+import outputs from '../../amplify_outputs.json';
+
+Amplify.configure(outputs);
+
+import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
+import { Authenticator } from '@aws-amplify/ui-react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 
@@ -10,44 +17,13 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-
-      <Stack>
-        <Stack.Screen
-          name="index"
-          options={{
-            title: 'Inicio',
-          }}
-        />
-
-        <Stack.Screen
-          name="forms"
-          options={{
-            title: 'Forms',
-          }}
-        />
-                <Stack.Screen
-          name="forms2"
-          options={{
-            title: 'Forms2',
-          }}
-        />
-
-
-                <Stack.Screen
-          name="forms3"
-          options={{
-            title: 'Forms3',
-          }}
-        />
-        <Stack.Screen
-          name="explore"
-          options={{
-            title: 'Explore',
-          }}
-        />
-      </Stack>
-    </ThemeProvider>
+    <Authenticator.Provider>
+      <Authenticator>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <AnimatedSplashOverlay />
+          <AppTabs />
+        </ThemeProvider>
+      </Authenticator>
+    </Authenticator.Provider>
   );
 }
