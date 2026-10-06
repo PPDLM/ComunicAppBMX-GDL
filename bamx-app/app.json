@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "bamx-app",
+    "name": "ComunicApp BAMX",
     "slug": "bamx-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -31,6 +31,13 @@
           "backgroundColor": "#208AEF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ComunicApp necesita acceso a tus fotos para adjuntar la nota del donante.",
+          "cameraPermission": "ComunicApp necesita la cámara para fotografiar la firma y la lista del donante."
         }
       ]
     ],
