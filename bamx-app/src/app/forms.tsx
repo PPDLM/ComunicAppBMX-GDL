@@ -5,195 +5,405 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ScrollView,
+  Image,
+  Alert,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+
+type Categoria = "Abarrotes" | "Medicina" | "Frutas/Verduras";
+
+type Producto = {
+  nombre: string;
+  categoria: Categoria;
+  cantidad: string;
+  unidad: string;
+};
 
 export default function FormularioRecepcion() {
-    const [producto, setProducto] = useState("");
-    const [cantidad, setCantidad] = useState("");
-    const [unidad, setUnidad] = useState("");
-    const [procedencia, setProcedencia] = useState("");
-    const [Numero_asignado, setNum_Asing] = useState("");
-    const [Fecha, setFecha] = useState("");
-    const [Nombre, setNombre] = useState("");
-    const [procedenci, setProcedenci] = useState("");
+  const [idRecepcion, setIdRecepcion] = useState("");
+  const [lugarRecoleccion, setLugarRecoleccion] = useState("");
+  const [nombreOperador, setNombreOperador] = useState("");
+  const [imagen, setImagen] = useState<string | null>(null);
 
+  const [productos, setProductos] = useState<Producto[]>([
+    {
+      nombre: "",
+      categoria: "Abarrotes",
+      cantidad: "",
+      unidad: "",
+    },
+  ]);
 
-  const enviarFormulario = () => {
-    if (!producto || !cantidad || !unidad || !procedencia) {
-      Alert.alert("Error", "Por favor llena todos los campos");
+  const agregarProducto = () => {
+    setProductos([
+      ...productos,
+      {
+        nombre: "",
+        categoria: "Abarrotes",
+        cantidad: "",
+        unidad: "",
+      },
+    ]);
+  };
+
+  const actualizarProducto = (
+    index: number,
+    campo: keyof Producto,
+    valor: string
+  ) => {
+    const nuevaLista = [...productos];
+
+    nuevaLista[index] = {
+      ...nuevaLista[index],
+      [campo]: valor,
+    };
+
+    setProductos(nuevaLista);
+  };
+
+  const eliminarProducto = (index: number) => {
+    setProductos(productos.filter((_, i) => i !== index));
+  };
+
+  const tomarFoto = async () => {
+    const permiso = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permiso.granted) {
+      Alert.alert(
+        "Permiso requerido",
+        "Necesitas permitir el acceso a la cámara."
+      );
       return;
     }
 
-    console.log({
-      producto,
-      cantidad,
-      unidad,
-      procedencia,
+    const resultado = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      quality: 0.7,
     });
 
-    Alert.alert("Éxito", "Información registrada correctamente");
+    if (!resultado.canceled) {
+      setImagen(resultado.assets[0].uri);
+    }
+  };
 
-    setProducto("");
-    setCantidad("");
-    setUnidad("");
-    setProcedencia("");
+  const enviarFormulario = () => {
+    const recepcion = {
+      idRecepcion,
+      lugarRecoleccion,
+      productos,
+      nombreOperador,
+      imagen,
+    };
+
+    console.log(recepcion);
+
+    Alert.alert("Éxito", "Recepción registrada");
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.titulo}>Recepción de productos</Text>
 
-      <Text style={styles.subtitulo}>
-        Ingresa la información del producto recibido
-      </Text>
+      {/* DATOS GENERALES */}
 
-      <View style={styles.formulario}>
-        
-        <Text style={styles.label}>No. Asignado</Text>
-    
-        <TextInput
-          style={styles.input}
-          placeholder="Ej. 01"
-          value={producto}
-          onChangeText={setProducto}
-        />
+      <View style={styles.seccion}>
+        <Text style={styles.seccionTitulo}>Datos de recepción</Text>
 
-        <Text style={styles.label}>Lugar donde se va a recoger</Text>
+        <Text style={styles.label}>ID</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Ej. Walmart"
-          value={procedencia}
-          onChangeText={setProcedencia}
+          placeholder="Ej. REC-001"
+          value={idRecepcion}
+          onChangeText={setIdRecepcion}
         />
 
-
-        <Text style={styles.label}>Productos</Text>
-    
-        <TextInput
-          style={styles.input}
-          placeholder="Ej. Arroz"
-          value={producto}
-          onChangeText={setProducto}
-        />
-
-        <Text style={styles.label}>No. de ruta</Text>
-    
-        <TextInput
-          style={styles.input}
-          placeholder="Ej. Av. Mexico"
-          value={producto}
-          onChangeText={setProducto}
-        />
-
-        <Text style={styles.label}>Cantidad</Text>
+        <Text style={styles.label}>Lugar de recolección</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="Ej. 20"
-          keyboardType="numeric"
-          value={cantidad}
-          onChangeText={setCantidad}
+          placeholder="Ej. Tienda, empresa o dirección"
+          value={lugarRecoleccion}
+          onChangeText={setLugarRecoleccion}
         />
-
-        <Text style={styles.label}>Unidad</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Ej. kg, cajas, piezas"
-          value={unidad}
-          onChangeText={setUnidad}
-        />
-        
-        <Text style={styles.label}>Tipo de producto</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Ej. Abarrotes, Verduras, etc"
-          value={unidad}
-          onChangeText={setUnidad}
-        />
-
-        <Text style={styles.label}>Nombre Operador</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Su nombre"
-          value={procedencia}
-          onChangeText={setProcedencia}
-        />
-
-        <Text style={styles.label}>Firma recibido </Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Su nombre"
-          value={procedencia}
-          onChangeText={setProcedencia}
-        />
-
-        <TouchableOpacity style={styles.boton} onPress={enviarFormulario}>
-          <Text style={styles.textoBoton}>Registrar producto</Text>
-        </TouchableOpacity>
       </View>
+
+      {/* PRODUCTOS */}
+
+      <Text style={styles.seccionTituloExterior}>Productos</Text>
+
+      {productos.map((producto, index) => (
+        <View key={index} style={styles.productoCard}>
+          <Text style={styles.productoTitulo}>
+            Producto {index + 1}
+          </Text>
+
+          <Text style={styles.label}>Nombre</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Ej. Arroz"
+            value={producto.nombre}
+            onChangeText={(texto) =>
+              actualizarProducto(index, "nombre", texto)
+            }
+          />
+
+          <Text style={styles.label}>Categoría</Text>
+
+          <View style={styles.categorias}>
+            {[
+              "Abarrotes",
+              "Medicina",
+              "Frutas/Verduras",
+            ].map((categoria) => (
+              <TouchableOpacity
+                key={categoria}
+                style={[
+                  styles.categoriaBoton,
+                  producto.categoria === categoria &&
+                    styles.categoriaSeleccionada,
+                ]}
+                onPress={() =>
+                  actualizarProducto(
+                    index,
+                    "categoria",
+                    categoria
+                  )
+                }
+              >
+                <Text
+                  style={[
+                    styles.categoriaTexto,
+                    producto.categoria === categoria &&
+                      styles.categoriaTextoSeleccionado,
+                  ]}
+                >
+                  {categoria}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.label}>Cantidad</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Ej. 20"
+            keyboardType="numeric"
+            value={producto.cantidad}
+            onChangeText={(texto) =>
+              actualizarProducto(index, "cantidad", texto)
+            }
+          />
+
+          <Text style={styles.label}>Unidad</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Ej. kg, cajas, piezas"
+            value={producto.unidad}
+            onChangeText={(texto) =>
+              actualizarProducto(index, "unidad", texto)
+            }
+          />
+
+          {productos.length > 1 && (
+            <TouchableOpacity
+              style={styles.botonEliminar}
+              onPress={() => eliminarProducto(index)}
+            >
+              <Text style={styles.textoEliminar}>
+                Eliminar producto
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ))}
+
+      <TouchableOpacity
+        style={styles.botonAgregar}
+        onPress={agregarProducto}
+      >
+        <Text style={styles.textoBoton}>
+          + Agregar producto
+        </Text>
+      </TouchableOpacity>
+
+      {/* OPERADOR */}
+
+      <View style={styles.seccion}>
+        <Text style={styles.seccionTitulo}>Operador</Text>
+
+        <Text style={styles.label}>Nombre del operador</Text>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Nombre completo"
+          value={nombreOperador}
+          onChangeText={setNombreOperador}
+        />
+
+        <TouchableOpacity
+          style={styles.botonFoto}
+          onPress={tomarFoto}
+        >
+          <Text style={styles.textoBoton}>
+            Tomar imagen
+          </Text>
+        </TouchableOpacity>
+
+        {imagen && (
+          <Image
+            source={{ uri: imagen }}
+            style={styles.imagen}
+          />
+        )}
+      </View>
+
+      <TouchableOpacity
+        style={styles.botonEnviar}
+        onPress={enviarFormulario}
+      >
+        <Text style={styles.textoBoton}>
+          Registrar recepción
+        </Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
-    backgroundColor: "#f5f5f5",
     padding: 24,
-    justifyContent: "center",
+    backgroundColor: "#f5f5f5",
   },
 
   titulo: {
     fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 8,
+    marginBottom: 20,
   },
 
-  subtitulo: {
-    fontSize: 16,
-    marginBottom: 30,
-  },
-
-  formulario: {
+  seccion: {
     backgroundColor: "white",
     padding: 20,
     borderRadius: 12,
+    marginBottom: 20,
+  },
+
+  seccionTitulo: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+
+  seccionTituloExterior: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 15,
+  },
+
+  productoCard: {
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 15,
+  },
+
+  productoTitulo: {
+    fontSize: 18,
+    fontWeight: "bold",
   },
 
   label: {
     fontSize: 16,
     fontWeight: "600",
-    marginBottom: 8,
     marginTop: 12,
+    marginBottom: 8,
   },
 
   input: {
     borderWidth: 1,
-    borderColor: "#cccccc",
+    borderColor: "#ccc",
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
-    backgroundColor: "#ffffff",
+    backgroundColor: "white",
   },
 
-  boton: {
-    marginTop: 25,
+  categorias: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+
+  categoriaBoton: {
+    borderWidth: 1,
+    borderColor: "#999",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+
+  categoriaSeleccionada: {
+    backgroundColor: "#2e7d32",
+    borderColor: "#2e7d32",
+  },
+
+  categoriaTexto: {
+    color: "#333",
+  },
+
+  categoriaTextoSeleccionado: {
+    color: "white",
+    fontWeight: "bold",
+  },
+
+  botonAgregar: {
     padding: 15,
+    borderRadius: 8,
+    backgroundColor: "#1976d2",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+
+  botonFoto: {
+    marginTop: 20,
+    padding: 15,
+    borderRadius: 8,
+    backgroundColor: "#555",
+    alignItems: "center",
+  },
+
+  botonEnviar: {
+    padding: 16,
     borderRadius: 8,
     backgroundColor: "#2e7d32",
     alignItems: "center",
+    marginBottom: 30,
+  },
+
+  botonEliminar: {
+    marginTop: 15,
+    alignItems: "center",
+  },
+
+  textoEliminar: {
+    color: "#c62828",
+    fontWeight: "bold",
   },
 
   textoBoton: {
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
+  },
+
+  imagen: {
+    width: "100%",
+    height: 220,
+    marginTop: 15,
+    borderRadius: 10,
   },
 });
