@@ -8,9 +8,11 @@
     "scheme": "bamxapp",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "mx.bamx.comunicapp",
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "mx.bamx.comunicapp",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
