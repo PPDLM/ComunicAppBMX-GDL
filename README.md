@@ -36,7 +36,6 @@ que cargó y encola las notas/cambios; se envían solos cuando vuelve la señal.
 ## Correr el proyecto
 
 ```bash
-cd bamx-app
 npm install
 npx tsc --noEmit        # typecheck
 npx expo lint
