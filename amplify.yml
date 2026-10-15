@@ -1,0 +1,22 @@
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - node -v && npm -v
+        # Not `npm ci`: @aws-amplify/data-construct and graphql-api-construct bundle packages whose
+        # own deps are missing from the bundle, so `npm ci` always reports the lock as out of sync.
+        - npm install --cache .npm --prefer-offline --no-audit --no-fund
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+frontend:
+  phases:
+    build:
+      commands:
+        - mkdir -p dist && echo "ComunicApp backend" > dist/index.html
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - .npm/**/*
