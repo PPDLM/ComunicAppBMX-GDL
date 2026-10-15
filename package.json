@@ -9,7 +9,7 @@
     "@react-native-community/netinfo": "12.0.1",
     "aws-amplify": "^6.22.1",
     "expo": "~57.0.26",
-    "expo-constants": "~57.0.20",
+    "expo-constants": "~58.0.10",
     "expo-device": "~57.0.2",
     "expo-font": "~57.0.4",
     "expo-glass-effect": "~57.0.4",
