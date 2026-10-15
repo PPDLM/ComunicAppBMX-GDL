@@ -56,15 +56,15 @@ Amplify (conecta el repo → rama → despliegue) y comparte su `amplify_outputs
 ### 2. Crear el primer administrador
 
 El registro público está deshabilitado, así que el primer admin se crea por CLI.
-El `user_pool_id` está en `amplify_outputs.json` → `auth.user_pool_id`.
+El `user_pool_id` está en `amplify_outputs.json` → `auth.user_pool_id` (región: `auth.aws_region`, hoy `us-east-2`).
 
 ```bash
 POOL=<user_pool_id>
 EMAIL=admin@ejemplo.com
-aws cognito-idp admin-create-user --region us-east-1 --user-pool-id $POOL --username $EMAIL \
+aws cognito-idp admin-create-user --region us-east-2 --user-pool-id $POOL --username $EMAIL \
   --user-attributes Name=email,Value=$EMAIL Name=email_verified,Value=true Name=name,Value="Administrador" \
   --temporary-password 'Bamx-Temp1!' --message-action SUPPRESS
-aws cognito-idp admin-add-user-to-group --region us-east-1 --user-pool-id $POOL --username $EMAIL --group-name ADMIN
+aws cognito-idp admin-add-user-to-group --region us-east-2 --user-pool-id $POOL --username $EMAIL --group-name ADMIN
 ```
 
 Si ya tienes una cuenta de pruebas, basta con el segundo comando. Una cuenta sin grupo ve
