@@ -63,7 +63,7 @@ POOL=<user_pool_id>
 EMAIL=admin@ejemplo.com
 aws cognito-idp admin-create-user --region us-east-2 --user-pool-id $POOL --username $EMAIL \
   --user-attributes Name=email,Value=$EMAIL Name=email_verified,Value=true Name=name,Value="Administrador" \
-  --temporary-password 'Bamx-Temp1!' --message-action SUPPRESS
+  --temporary-password '<TEMP_PASSWORD>' --message-action SUPPRESS
 aws cognito-idp admin-add-user-to-group --region us-east-2 --user-pool-id $POOL --username $EMAIL --group-name ADMIN
 ```
 
