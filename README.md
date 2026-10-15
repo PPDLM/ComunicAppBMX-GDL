@@ -43,7 +43,7 @@ npx expo lint
 
 ### 1. Desplegar el backend (genera `amplify_outputs.json`)
 
-Necesitas las credenciales de AWS configuradas (`aws configure`, región `us-east-1`).
+Necesitas las credenciales de AWS configuradas (`aws configure`, región `us-east-2`).
 
 ```bash
 npx ampx sandbox        # deja corriendo; despliega y vigila cambios en amplify/
