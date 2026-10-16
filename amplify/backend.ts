@@ -11,11 +11,18 @@ const backend = defineBackend({
   adminUsers,
 });
 
+const { cfnUserPool, cfnUserPoolClient } = backend.auth.resources.cfnResources;
+
 // No self sign-up: only ADMIN creates accounts (through the admin-users function).
-const { cfnUserPool } = backend.auth.resources.cfnResources;
 cfnUserPool.adminCreateUserConfig = {
   allowAdminCreateUserOnly: true,
 };
+
+// Expo Go can't run the native SRP math, so allow plain password auth (over TLS) as well.
+cfnUserPoolClient.explicitAuthFlows = [
+  ...(cfnUserPoolClient.explicitAuthFlows ?? []),
+  'ALLOW_USER_PASSWORD_AUTH',
+];
 
 // Password policy (MASVS-AUTH-1): stronger than the Cognito default (8 chars),
 // and temporary passwords handed out by the admin expire after 3 days.

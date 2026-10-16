@@ -1,9 +1,12 @@
 import { confirmSignIn, signIn } from 'aws-amplify/auth';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 
 import { useSession } from '@/lib/session';
 import { Button, C, Card, ErrorBox, Field, Muted } from './ui';
+
+const inExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 function friendly(e: unknown): string {
   const name = (e as { name?: string })?.name ?? '';
@@ -40,7 +43,11 @@ export function LoginScreen() {
     setBusy(true);
     setError(null);
     try {
-      const res = await signIn({ username: email.trim().toLowerCase(), password });
+      const res = await signIn({
+        username: email.trim().toLowerCase(),
+        password,
+        options: inExpoGo ? { authFlowType: 'USER_PASSWORD_AUTH' } : undefined,
+      });
       await handleStep(res.nextStep.signInStep);
     } catch (e) {
       if ((e as { name?: string })?.name === 'UserAlreadyAuthenticatedException') await refresh();

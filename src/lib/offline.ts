@@ -400,12 +400,14 @@ async function process(op: Op) {
     for (const item of op.items) await createItem(op.donationId, op.driverId, item);
 
     const statedKgTotal = op.items.reduce((s, i) => s + (i.kg || 0), 0);
+    // Only send fields that have a value: setting a field to null counts as a delete for
+    // owner auth, and drivers can't delete ("Unauthorized on [driverNotes, listPhotoKey]").
     const fields = {
       signaturePhotoKey: signatureKey,
-      listPhotoKey: listKey,
       extraPhotoKeys: extraKeys,
-      driverNotes: op.driverNotes || null,
       statedKgTotal,
+      ...(listKey ? { listPhotoKey: listKey } : {}),
+      ...(op.driverNotes ? { driverNotes: op.driverNotes } : {}),
     };
 
     let d;
@@ -451,7 +453,12 @@ async function process(op: Op) {
   const discardedKgTotal = op.items.reduce((s, i) => s + (i.discardedKg || 0), 0);
   const d = await getDonation(op.donationId);
   if (!d) throw new Error('La donación ya no existe');
-  const fields = { inspectionNotes: op.inspectionNotes || null, usefulKgTotal, discardedKgTotal };
+  // Same as pickup: a null would count as a delete, which INSPECTION/WAREHOUSE can't do.
+  const fields = {
+    usefulKgTotal,
+    discardedKgTotal,
+    ...(op.inspectionNotes ? { inspectionNotes: op.inspectionNotes } : {}),
+  };
   if (d.status === 'CLOSED' && d.closedAt === op.at) return; // retry
   if (d.status !== 'IN_REVISION') {
     must(await api().models.Donation.update({ id: op.donationId, ...fields }));
