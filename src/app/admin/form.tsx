@@ -1,27 +1,50 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 
 import { Screen } from '@/components/screen';
-import { Button, C, Card, ErrorBox, Field, H2, Loading, Muted } from '@/components/ui';
+import { DatePicker } from '@/components/sheet';
+import { Button, C, Card, ChoiceGrid, ErrorBox, Field, InlineError, Label, Loading, Muted, Text, Title } from '@/components/ui';
 import { type AdminUser, createDonation, listUsers, updateDonation } from '@/lib/admin';
 import { api, errorMessage, must, type Donation } from '@/lib/client';
-import { MAX, cleanText, parseLocalInput, toLocalInput } from '@/lib/format';
+import { MAX, cleanText, isToday, parseLocalInput, toLocalInput } from '@/lib/format';
+import { cacheGet } from '@/lib/offline';
 import { useUser } from '@/lib/session';
 
-function at(daysFromToday: number, hour: number) {
+const HOURS = ['09:00', '12:00', '16:00'] as const;
+const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const pad = (n: number) => String(n).padStart(2, '0');
+
+type Day = 'today' | 'tomorrow' | 'other';
+type Hour = (typeof HOURS)[number] | 'other';
+
+function dayOf(d: Date): Day {
+  const t = new Date();
+  if (d.toDateString() === t.toDateString()) return 'today';
+  t.setDate(t.getDate() + 1);
+  return d.toDateString() === t.toDateString() ? 'tomorrow' : 'other';
+}
+function hourOf(d: Date): Hour {
+  const h = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return (HOURS as readonly string[]).includes(h) ? (h as Hour) : 'other';
+}
+/** Next round hour from now (default for new donations). */
+function nextRoundHour() {
   const d = new Date();
-  d.setDate(d.getDate() + daysFromToday);
-  d.setHours(hour, 0, 0, 0);
-  return toLocalInput(d);
+  d.setHours(d.getHours() + 1, 0, 0, 0);
+  return d;
 }
 
-/** Create or edit a donation (ADMIN). `?id=` edits. */
+/** Create or edit a donation (ADMIN). `?id=` edits; `?focus=driver` jumps to the driver section. */
 export default function DonationForm() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, focus } = useLocalSearchParams<{ id?: string; focus?: string }>();
   const user = useUser();
+  const scrollRef = useRef<ScrollView>(null);
+  const driverY = useRef(0);
   const [prev, setPrev] = useState<Donation | null>(null);
   const [drivers, setDrivers] = useState<AdminUser[]>([]);
+  const [cached, setCached] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -29,25 +52,29 @@ export default function DonationForm() {
 
   const [donorName, setDonorName] = useState('');
   const [pickupAddress, setPickupAddress] = useState('');
-  const [scheduled, setScheduled] = useState(at(0, new Date().getHours() + 1));
+  const [when, setWhen] = useState<Date>(nextRoundHour());
+  const [picker, setPicker] = useState<'date' | 'time' | null>(null);
   const [requestedContents, setRequestedContents] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
+  const [notesOpen, setNotesOpen] = useState(false);
   const [driverId, setDriverId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const users = await listUsers();
+        const [users, cache] = await Promise.all([listUsers(), cacheGet<Donation[]>('admin:donations')]);
         setDrivers(users.filter((u) => u.role === 'DRIVER' && u.enabled));
+        setCached(cache?.data ?? []);
         if (id) {
           const d = must(await api().models.Donation.get({ id }));
           if (!d) throw new Error('Donación no encontrada');
           setPrev(d);
           setDonorName(d.donorName);
           setPickupAddress(d.pickupAddress);
-          setScheduled(toLocalInput(new Date(d.scheduledAt)));
+          setWhen(new Date(d.scheduledAt));
           setRequestedContents(d.requestedContents ?? '');
           setAdminNotes(d.adminNotes ?? '');
+          setNotesOpen(!!d.adminNotes);
           setDriverId(d.driverId ?? null);
         }
       } catch (e) {
@@ -58,11 +85,20 @@ export default function DonationForm() {
     })();
   }, [id]);
 
+  // "Asignar chofer" from the list: scroll straight to the driver section.
+  useEffect(() => {
+    if (!loading && focus === 'driver') {
+      const t = setTimeout(() => scrollRef.current?.scrollTo({ y: driverY.current, animated: true }), 250);
+      return () => clearTimeout(t);
+    }
+  }, [loading, focus]);
+
+  const scheduled = toLocalInput(when);
   const scheduledIso = parseLocalInput(scheduled);
   const errors = {
-    donorName: !cleanText(donorName) ? 'Requerido' : null,
-    pickupAddress: !cleanText(pickupAddress, MAX.address) ? 'Requerido' : null,
-    scheduled: !scheduledIso ? 'Formato: AAAA-MM-DD HH:MM' : null,
+    donorName: !cleanText(donorName) ? 'Escribe el nombre del donante' : null,
+    pickupAddress: !cleanText(pickupAddress, MAX.address) ? 'Escribe la dirección completa' : null,
+    scheduled: !scheduledIso ? 'Elige día y hora' : null,
   };
   const valid = !errors.donorName && !errors.pickupAddress && !errors.scheduled;
 
@@ -79,7 +115,7 @@ export default function DonationForm() {
         requestedContents: cleanText(requestedContents, MAX.long) || null,
         adminNotes: cleanText(adminNotes, MAX.long) || null,
         driverId: driverId,
-        driverName: driverId ? (driver?.name || driver?.email || prev?.driverName || null) : null,
+        driverName: driverId ? driver?.name || driver?.email || prev?.driverName || null : null,
       };
       if (prev) await updateDonation(prev, input, user);
       else await createDonation(input, user);
@@ -93,23 +129,75 @@ export default function DonationForm() {
 
   if (loading) return <Loading />;
 
+  // Last distinct donors (fill the address too).
+  const recent: { name: string; address: string }[] = [];
+  for (const d of [...cached].sort((a, b) => b.scheduledAt.localeCompare(a.scheduledAt))) {
+    if (recent.length >= 5) break;
+    if (!recent.some((r) => r.name === d.donorName)) recent.push({ name: d.donorName, address: d.pickupAddress });
+  }
+  const loadToday = (sub: string) =>
+    cached.filter((d) => d.driverId === sub && d.status === 'ASSIGNED' && isToday(d.scheduledAt)).length;
+
+  const setDay = (day: Day) => {
+    if (day === 'other') return setPicker('date');
+    const d = new Date();
+    if (day === 'tomorrow') d.setDate(d.getDate() + 1);
+    const n = new Date(when);
+    n.setFullYear(d.getFullYear(), d.getMonth(), d.getDate());
+    setWhen(n);
+  };
+  const setHour = (h: Hour) => {
+    if (h === 'other') return setPicker('time');
+    const [hh, mm] = h.split(':').map(Number);
+    const n = new Date(when);
+    n.setHours(hh, mm, 0, 0);
+    setWhen(n);
+  };
   const lockedDriver = prev && !['REQUESTED', 'ASSIGNED'].includes(prev.status);
+  const day = dayOf(when);
+  const hour = hourOf(when);
 
   return (
-    <Screen>
+    <Screen
+      scrollRef={scrollRef}
+      footer={
+        <Button size="lg" icon="check" title={prev ? 'Guardar cambios' : 'Crear donación'} onPress={save} loading={saving} />
+      }>
+      <Title style={{ paddingHorizontal: 2 }}>{prev ? 'Editar donación' : 'Nueva donación'}</Title>
       {loadError ? <ErrorBox text={loadError} /> : null}
-      <Card>
-        <H2>{prev ? 'Editar donación' : 'Nueva donación'}</H2>
+
+      <Card style={{ padding: 18, gap: 16 }}>
+        <View style={{ gap: 8 }}>
+          <Field
+            label="Donante"
+            maxLength={MAX.short}
+            value={donorName}
+            onChangeText={setDonorName}
+            placeholder="Ej. Walmart Av. Patria"
+            error={submitted ? errors.donorName : null}
+          />
+          {!prev && recent.length ? (
+            <>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: C.gray }}>Donantes recientes (llenan la dirección):</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {recent.map((r) => (
+                  <Pressable
+                    key={r.name}
+                    onPress={() => {
+                      setDonorName(r.name);
+                      setPickupAddress(r.address);
+                    }}
+                    accessibilityRole="button"
+                    style={{ height: 40, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1.5, borderColor: C.borderStrong, justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600' }}>{r.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          ) : null}
+        </View>
         <Field
-          label="Donante *"
-          maxLength={MAX.short}
-          value={donorName}
-          onChangeText={setDonorName}
-          placeholder="Ej. Walmart Av. Patria"
-          error={submitted ? errors.donorName : null}
-        />
-        <Field
-          label="Dirección de recolección *"
+          label="Dirección de recolección"
           maxLength={MAX.address}
           value={pickupAddress}
           onChangeText={setPickupAddress}
@@ -118,60 +206,132 @@ export default function DonationForm() {
           error={submitted ? errors.pickupAddress : null}
           hint="Escríbela completa: el chofer la abrirá en Google Maps o Waze."
         />
-        <Field
-          label="Fecha y hora de recolección *"
-          value={scheduled}
-          onChangeText={setScheduled}
-          placeholder="AAAA-MM-DD HH:MM"
-          error={submitted ? errors.scheduled : null}
+      </Card>
+
+      <Card style={{ padding: 18 }}>
+        <Label>¿Cuándo?</Label>
+        <ChoiceGrid<Day>
+          label="Día"
+          columns={3}
+          value={day}
+          onChange={setDay}
+          options={[
+            { value: 'today', label: 'Hoy' },
+            { value: 'tomorrow', label: 'Mañana' },
+            { value: 'other', label: 'Otro día' },
+          ]}
         />
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: -6, marginBottom: 12, flexWrap: 'wrap' }}>
-          {[
-            ['Hoy 12:00', at(0, 12)],
-            ['Hoy 16:00', at(0, 16)],
-            ['Mañana 09:00', at(1, 9)],
-            ['Mañana 13:00', at(1, 13)],
-          ].map(([label, value]) => (
-            <Pressable key={label} onPress={() => setScheduled(value)}>
-              <Text style={{ color: C.primaryDark, fontWeight: '600' }}>{label}</Text>
+        <ChoiceGrid<Hour>
+          label="Hora"
+          columns={4}
+          height={48}
+          value={hour}
+          onChange={setHour}
+          options={[...HOURS.map((h) => ({ value: h, label: h })), { value: 'other' as const, label: hour === 'other' ? `${pad(when.getHours())}:${pad(when.getMinutes())}` : 'Otra' }]}
+        />
+        <Text style={{ fontSize: 14, fontWeight: '600', color: C.gray }}>
+          {DAYS[when.getDay()]} {when.getDate()} {MONTHS[when.getMonth()]}, {pad(when.getHours())}:{pad(when.getMinutes())}
+        </Text>
+        {submitted && errors.scheduled ? <InlineError text={errors.scheduled} /> : null}
+      </Card>
+
+      <View onLayout={(e) => (driverY.current = e.nativeEvent.layout.y)}>
+        <Card style={{ padding: 18, gap: 10 }}>
+          <Label>Chofer</Label>
+          {lockedDriver ? (
+            <Muted style={{ fontSize: 14 }}>La donación ya fue recolectada; cambiar el chofer solo actualiza el registro.</Muted>
+          ) : null}
+          <View accessibilityRole="radiogroup" accessibilityLabel="Chofer" style={{ gap: 8 }}>
+            {drivers.map((d) => {
+              const on = driverId === d.sub;
+              const n = loadToday(d.sub);
+              return (
+                <Pressable
+                  key={d.sub}
+                  onPress={() => setDriverId(d.sub)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: on }}
+                  style={{
+                    minHeight: 60,
+                    paddingHorizontal: 16,
+                    borderRadius: 14,
+                    borderWidth: on ? 2 : 1.5,
+                    borderColor: on ? C.orange : C.border,
+                    backgroundColor: on ? C.orangeSoft : '#FFFFFF',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}>
+                  <View
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 11,
+                      borderWidth: on ? 7 : 2,
+                      borderColor: on ? C.orange : '#BDBDBD',
+                      backgroundColor: '#FFFFFF',
+                    }}
+                  />
+                  <Text style={{ flex: 1, fontSize: 16, fontWeight: on ? '700' : '600' }}>{d.name || d.email}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: on ? C.orangeText : C.gray }}>{n ? `${n} hoy` : 'Libre'}</Text>
+                </Pressable>
+              );
+            })}
+            <Pressable
+              onPress={() => setDriverId(null)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: driverId === null }}
+              style={{
+                minHeight: 52,
+                paddingHorizontal: 16,
+                borderRadius: 14,
+                borderWidth: driverId === null ? 2 : 1.5,
+                borderStyle: driverId === null ? 'solid' : 'dashed',
+                borderColor: driverId === null ? C.orange : C.borderStrong,
+                backgroundColor: driverId === null ? C.orangeSoft : '#FFFFFF',
+                justifyContent: 'center',
+              }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: driverId === null ? C.orangeText : C.gray }}>Asignar después</Text>
             </Pressable>
-          ))}
-        </View>
+          </View>
+          {!drivers.length ? <Muted style={{ fontSize: 14 }}>No hay choferes activos. Créalos en Usuarios.</Muted> : null}
+        </Card>
+      </View>
+
+      <Card style={{ padding: 18, gap: 8 }}>
         <Field
-          label="Contenido reportado por el donante (opcional)"
+          label="Lo que dijo el donante"
+          optional
           maxLength={MAX.long}
           value={requestedContents}
           onChangeText={setRequestedContents}
-          placeholder="Lo que dijo al llamar, si aplica"
+          placeholder="Ej. pan del día y abarrotes"
           multiline
         />
-        <Field label="Notas (opcional)" maxLength={MAX.long} value={adminNotes} onChangeText={setAdminNotes} multiline />
-      </Card>
-
-      <Card>
-        <H2>Chofer asignado</H2>
-        {lockedDriver ? (
-          <Muted style={{ marginBottom: 8 }}>
-            La donación ya fue recolectada; cambiar el chofer solo actualiza el registro.
-          </Muted>
-        ) : null}
-        <Pressable onPress={() => setDriverId(null)} style={{ paddingVertical: 10 }}>
-          <Text style={{ fontWeight: driverId === null ? '700' : '400', color: C.text }}>
-            {driverId === null ? '● ' : '○ '}Sin asignar
-          </Text>
-        </Pressable>
-        {drivers.map((d) => (
-          <Pressable key={d.sub} onPress={() => setDriverId(d.sub)} style={{ paddingVertical: 10 }}>
-            <Text style={{ fontWeight: driverId === d.sub ? '700' : '400', color: C.text }}>
-              {driverId === d.sub ? '● ' : '○ '}
-              {d.name || d.email}
-            </Text>
+        {notesOpen ? (
+          <Field label="Nota para el chofer" optional maxLength={MAX.long} value={adminNotes} onChangeText={setAdminNotes} multiline autoFocus={!prev} />
+        ) : (
+          <Pressable onPress={() => setNotesOpen(true)} accessibilityRole="button" style={{ alignSelf: 'flex-start', height: 44, justifyContent: 'center' }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: C.gray }}>+ Nota para el chofer</Text>
           </Pressable>
-        ))}
-        {!drivers.length ? <Muted>No hay choferes activos. Créalos en Usuarios.</Muted> : null}
+        )}
       </Card>
 
-      <Button title={prev ? 'Guardar cambios' : 'Crear donación'} onPress={save} loading={saving} />
+      <DatePicker
+        visible={picker !== null}
+        mode={picker ?? 'date'}
+        title={picker === 'time' ? 'Hora de recolección' : 'Día de recolección'}
+        value={when}
+        minimumDate={picker === 'date' ? new Date() : undefined}
+        onClose={() => setPicker(null)}
+        onConfirm={(d) => {
+          const n = new Date(when);
+          if (picker === 'date') n.setFullYear(d.getFullYear(), d.getMonth(), d.getDate());
+          else n.setHours(d.getHours(), d.getMinutes(), 0, 0);
+          setWhen(n);
+          setPicker(null);
+        }}
+      />
     </Screen>
   );
 }
