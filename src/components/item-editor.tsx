@@ -1,9 +1,11 @@
-import { Pressable, Text, View } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { Pressable, View } from 'react-native';
 
 import { CATEGORIES, DISCARD_REASONS, UNITS } from '@/lib/domain';
 import { MAX, cleanText, num, parseDateOnly, uuid } from '@/lib/format';
 import type { ItemInput } from '@/lib/offline';
-import { Button, C, Card, Chips, Field, Muted } from './ui';
+import { Icon } from './icons';
+import { Button, C, ChoiceGrid, Chips, Field, InlineError, Label, Stepper, Text } from './ui';
 
 /** Editable item as strings (form state). */
 export type ItemDraft = {
@@ -85,120 +87,215 @@ export function validateDrafts(
   return { items, errors };
 }
 
-export function ItemsEditor({
-  drafts,
+export const isKgUnit = isKg;
+
+/** "No apto para consumo" → "No apto" on screen; the full value is what gets saved. */
+export const REASON_LABEL: Partial<Record<(typeof DISCARD_REASONS)[number], string>> = {
+  'No apto para consumo': 'No apto',
+};
+
+const TOP_CATEGORIES: readonly string[] = ['Abarrotes', 'Frutas y verduras', 'Lácteos', 'Panadería'];
+
+/** Estimated kg of a draft line (what the driver declares). */
+export function draftKg(d: ItemDraft) {
+  return (isKg(d.unit) ? num(d.quantity) : num(d.kg)) ?? 0;
+}
+
+/** Compact saved product (64 high) with an edit button. */
+export function ProductRow({ d, onEdit }: { d: ItemDraft; onEdit: () => void }) {
+  const cat = d.category === 'Otro' ? d.customCategory || 'Otro' : d.category;
+  return (
+    <View
+      style={{
+        backgroundColor: C.card,
+        borderRadius: 16,
+        paddingLeft: 16,
+        paddingRight: 6,
+        paddingVertical: 4,
+        minHeight: 64,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+      }}>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 16, fontWeight: '800' }}>{d.name}</Text>
+        <Text style={{ fontSize: 14, color: C.gray }}>
+          {d.quantity} {d.unit} · ≈{Math.round(draftKg(d) * 10) / 10} kg · {cat}
+        </Text>
+      </View>
+      <Pressable
+        onPress={onEdit}
+        accessibilityRole="button"
+        accessibilityLabel={`Editar ${d.name}`}
+        style={{ width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="edit" size={22} color={C.gray} />
+      </Pressable>
+    </View>
+  );
+}
+
+/**
+ * One product being added or edited (orange border). Same fields as before, faster controls:
+ * suggestion chips, top categories + "Más…", a stepper for quantity and a unit grid.
+ * In REVIEWED mode (product inspection adds) it also asks useful / discarded kg.
+ */
+export function ProductEditor({
+  draft,
   onChange,
   mode,
+  suggestions = [],
+  errors = [],
+  actions,
 }: {
-  drafts: ItemDraft[];
-  onChange: (d: ItemDraft[]) => void;
+  draft: ItemDraft;
+  onChange: (d: ItemDraft) => void;
   mode: 'STATED' | 'REVIEWED';
+  suggestions?: string[];
+  errors?: string[];
+  actions?: ReactNode;
 }) {
-  const set = (i: number, patch: Partial<ItemDraft>) =>
-    onChange(drafts.map((d, j) => (j === i ? { ...d, ...patch } : d)));
+  const [allCats, setAllCats] = useState(false);
+  const set = (patch: Partial<ItemDraft>) => onChange({ ...draft, ...patch });
+  const customUnit = !(UNITS as readonly string[]).includes(draft.unit);
+  const cats = allCats || !TOP_CATEGORIES.includes(draft.category) ? [...CATEGORIES] : [...TOP_CATEGORIES, 'more'];
+  const sugg = suggestions.filter((s) => s.toLowerCase() !== draft.name.trim().toLowerCase()).slice(0, 6);
+  const discarded = num(draft.discardedKg) ?? 0;
 
   return (
-    <View>
-      {drafts.map((d, i) => {
-        const customUnit = !(UNITS as readonly string[]).includes(d.unit);
-        return (
-          <Card key={d.id}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontWeight: '700', fontSize: 16 }}>
-                Producto {i + 1}
-                {mode === 'REVIEWED' && !d.sourceItemId ? ' (agregado en revisión)' : ''}
-              </Text>
-              <Pressable onPress={() => onChange(drafts.filter((_, j) => j !== i))} hitSlop={10}>
-                <Text style={{ color: C.danger, fontWeight: '600' }}>Quitar</Text>
+    <View
+      accessibilityLabel="Producto"
+      style={{ backgroundColor: C.card, borderRadius: 18, padding: 16, gap: 16, borderWidth: 2, borderColor: C.orange }}>
+      <View style={{ gap: 8 }}>
+        <Field label="Producto" maxLength={MAX.short} value={draft.name} onChangeText={(v) => set({ name: v })} placeholder="Ej. Arroz" style={{ fontSize: 17 }} />
+        {sugg.length ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {sugg.map((s) => (
+              <Pressable
+                key={s}
+                onPress={() => set({ name: s })}
+                accessibilityRole="button"
+                accessibilityLabel={`Usar ${s}`}
+                style={{ height: 40, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1.5, borderColor: C.borderStrong, justifyContent: 'center' }}>
+                <Text style={{ fontSize: 14, fontWeight: '600' }}>{s}</Text>
               </Pressable>
-            </View>
-            {d.statedHint ? <Muted style={{ marginBottom: 8 }}>Declarado por chofer: {d.statedHint}</Muted> : null}
+            ))}
+          </View>
+        ) : null}
+      </View>
 
-            <Field label="Nombre" maxLength={MAX.short} value={d.name} onChangeText={(v) => set(i, { name: v })} placeholder="Ej. Arroz" />
+      <View style={{ gap: 8 }}>
+        <Label>Categoría</Label>
+        <Chips
+          options={cats}
+          value={draft.category}
+          labels={{ more: 'Más…' }}
+          onChange={(v) => (v === 'more' ? setAllCats(true) : set({ category: v }))}
+        />
+        {draft.category === 'Otro' ? (
+          <Field
+            label="Categoría personalizada"
+            value={draft.customCategory}
+            onChangeText={(v) => set({ customCategory: v })}
+            placeholder="Ej. Alimento para mascotas"
+          />
+        ) : null}
+      </View>
 
-            <Text style={{ fontWeight: '600', marginBottom: 6 }}>Categoría</Text>
-            <Chips options={CATEGORIES} value={d.category as (typeof CATEGORIES)[number]} onChange={(v) => set(i, { category: v })} />
-            {d.category === 'Otro' ? (
-              <Field
-                label="Categoría personalizada"
-                value={d.customCategory}
-                onChangeText={(v) => set(i, { customCategory: v })}
-                placeholder="Ej. Alimento para mascotas"
-              />
-            ) : null}
+      <View style={{ gap: 8 }}>
+        <Label>Cantidad</Label>
+        <View style={{ flexDirection: 'row' }}>
+          <Stepper boxed label="Cantidad" value={draft.quantity} onChange={(v) => set({ quantity: v })} />
+        </View>
+        <ChoiceGrid
+          label="Unidad"
+          columns={3}
+          height={48}
+          options={[...UNITS, 'otra'].map((u) => ({ value: u, label: u }))}
+          value={customUnit ? 'otra' : draft.unit}
+          onChange={(v) => set({ unit: v === 'otra' ? '' : v })}
+        />
+        {customUnit ? (
+          <Field label="Unidad personalizada" value={draft.unit} onChangeText={(v) => set({ unit: v })} placeholder="Ej. tarimas" />
+        ) : null}
+      </View>
 
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={{ flex: 1 }}>
-                <Field
-                  label="Cantidad"
-                  keyboardType="decimal-pad"
-                  value={d.quantity}
-                  onChangeText={(v) => set(i, { quantity: v })}
-                  placeholder="20"
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Field
-                  label={mode === 'STATED' ? 'Kg estimados' : 'Kg útiles'}
-                  keyboardType="decimal-pad"
-                  value={mode === 'STATED' && isKg(d.unit) ? d.quantity : d.kg}
-                  editable={!(mode === 'STATED' && isKg(d.unit))}
-                  onChangeText={(v) => set(i, { kg: v })}
-                  placeholder="0"
-                />
-              </View>
-            </View>
+      {mode === 'STATED' && !isKg(draft.unit) ? (
+        <Field
+          label="Kg aproximados (para reportes)"
+          keyboardType="decimal-pad"
+          value={draft.kg}
+          onChangeText={(v) => set({ kg: v })}
+          placeholder="0"
+        />
+      ) : null}
 
-            <Text style={{ fontWeight: '600', marginBottom: 6 }}>Unidad</Text>
-            <Chips
-              options={[...UNITS, 'otra'] as readonly string[]}
-              value={customUnit ? 'otra' : d.unit}
-              onChange={(v) => set(i, { unit: v === 'otra' ? '' : v })}
+      {mode === 'REVIEWED' ? (
+        <>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <Field
+              containerStyle={{ flex: 1 }}
+              label="Kg útiles"
+              keyboardType="decimal-pad"
+              value={draft.kg}
+              onChangeText={(v) => set({ kg: v })}
+              placeholder="0"
             />
-            {customUnit ? (
-              <Field label="Unidad personalizada" value={d.unit} onChangeText={(v) => set(i, { unit: v })} placeholder="Ej. tarimas" />
-            ) : null}
-            {!isKg(d.unit) && mode === 'STATED' ? (
-              <Muted>Como la unidad no es kg, escribe un estimado en kg para los reportes.</Muted>
-            ) : null}
+            <Field
+              containerStyle={{ flex: 1 }}
+              label="Kg descartados"
+              keyboardType="decimal-pad"
+              value={draft.discardedKg}
+              onChangeText={(v) => set({ discardedKg: v })}
+              placeholder="0"
+            />
+          </View>
+          {discarded > 0 ? (
+            <ReasonChips value={draft.discardReason} onChange={(v) => set({ discardReason: v })} />
+          ) : null}
+        </>
+      ) : null}
 
-            {mode === 'REVIEWED' ? (
-              <>
-                <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-                  <View style={{ flex: 1 }}>
-                    <Field
-                      label="Kg descartados"
-                      keyboardType="decimal-pad"
-                      value={d.discardedKg}
-                      onChangeText={(v) => set(i, { discardedKg: v })}
-                      placeholder="0"
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Field
-                      label="Caducidad"
-                      value={d.expiryDate}
-                      onChangeText={(v) => set(i, { expiryDate: v })}
-                      placeholder="AAAA-MM-DD"
-                    />
-                  </View>
-                </View>
-                {num(d.discardedKg) ? (
-                  <>
-                    <Text style={{ fontWeight: '600', marginBottom: 6 }}>Motivo del descarte</Text>
-                    <Chips
-                      options={DISCARD_REASONS}
-                      value={(d.discardReason || null) as (typeof DISCARD_REASONS)[number] | null}
-                      onChange={(v) => set(i, { discardReason: v })}
-                    />
-                  </>
-                ) : null}
-              </>
-            ) : null}
-          </Card>
-        );
-      })}
-      <Button kind="secondary" title="+ Agregar producto" onPress={() => onChange([...drafts, emptyDraft()])} />
+      {errors.length ? (
+        <View style={{ gap: 4 }}>
+          {errors.map((e) => (
+            <InlineError key={e} text={e} />
+          ))}
+        </View>
+      ) : null}
+      {actions}
+    </View>
+  );
+}
+
+export function ReasonChips({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <View style={{ gap: 8 }}>
+      <Label>¿Por qué se descarta?</Label>
+      <Chips options={DISCARD_REASONS} value={(value || null) as (typeof DISCARD_REASONS)[number] | null} onChange={onChange} labels={REASON_LABEL} />
+    </View>
+  );
+}
+
+/** Editor button row: dark "Guardar y agregar otro" (new) or save / remove (editing). */
+export function EditorActions({
+  editing,
+  onSave,
+  onRemove,
+  onCancel,
+}: {
+  editing: boolean;
+  onSave: () => void;
+  onRemove?: () => void;
+  onCancel?: () => void;
+}) {
+  if (!editing) return <Button kind="dark" icon="plus" title="Guardar y agregar otro" onPress={onSave} />;
+  return (
+    <View style={{ gap: 8 }}>
+      <Button kind="dark" icon="check" title="Guardar cambios" onPress={onSave} />
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {onCancel ? <Button kind="secondary" title="Cancelar" onPress={onCancel} style={{ flex: 1 }} /> : null}
+        {onRemove ? <Button kind="danger" icon="trash" title="Quitar" onPress={onRemove} style={{ flex: 1 }} /> : null}
+      </View>
     </View>
   );
 }
