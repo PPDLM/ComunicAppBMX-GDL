@@ -1,8 +1,8 @@
 import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
-import { storage } from './storage/resource';
 import { adminUsers } from './functions/admin-users/resource';
+import { storage } from './storage/resource';
 
 const backend = defineBackend({
   auth,
@@ -11,14 +11,11 @@ const backend = defineBackend({
   adminUsers,
 });
 
-const { cfnUserPool, cfnUserPoolClient } = backend.auth.resources.cfnResources;
-
-// No self sign-up: only ADMIN creates accounts (through the admin-users function).
 cfnUserPool.adminCreateUserConfig = {
   allowAdminCreateUserOnly: true,
 };
 
-// Expo Go can't run the native SRP math, so allow plain password auth (over TLS) as well.
+const { cfnUserPool, cfnUserPoolClient } = backend.auth.resources.cfnResources;
 cfnUserPoolClient.explicitAuthFlows = [
   ...(cfnUserPoolClient.explicitAuthFlows ?? []),
   'ALLOW_USER_PASSWORD_AUTH',

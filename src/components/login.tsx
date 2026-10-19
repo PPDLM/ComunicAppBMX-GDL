@@ -35,6 +35,10 @@ const L = {
   placeholder: '#9A9A9A',
 };
 
+// Emails never contain spaces; Cognito passwords can't start or end with one.
+const cleanEmail = (v: string) => v.replace(/\s/g, '').toLowerCase();
+const cleanPassword = (v: string) => v.trim();
+
 function friendly(e: unknown): string {
   const name = (e as { name?: string })?.name ?? '';
   const msg = (e as Error)?.message ?? String(e);
@@ -43,6 +47,8 @@ function friendly(e: unknown): string {
     return 'Correo o contraseña incorrectos. Inténtalo de nuevo.';
   if (name === 'InvalidPasswordException')
     return 'La contraseña debe tener al menos 10 caracteres, mayúscula, minúscula, número y símbolo.';
+  if (name.startsWith('Empty')) return 'Completa todos los campos.';
+  if (name === 'InvalidParameterException') return 'Revisa que el correo y la contraseña estén bien escritos.';
   if (/network/i.test(msg)) return 'Sin conexión. Necesitas internet para iniciar sesión la primera vez.';
   return msg;
 }
@@ -74,8 +80,8 @@ export function LoginScreen() {
     setError(null);
     try {
       const res = await signIn({
-        username: email.trim().toLowerCase(),
-        password,
+        username: cleanEmail(email),
+        password: cleanPassword(password),
         options: inExpoGo ? { authFlowType: 'USER_PASSWORD_AUTH' } : undefined,
       });
       await handleStep(res.nextStep.signInStep);
@@ -91,7 +97,7 @@ export function LoginScreen() {
     setBusy(true);
     setError(null);
     try {
-      const res = await confirmSignIn({ challengeResponse: newPassword });
+      const res = await confirmSignIn({ challengeResponse: cleanPassword(newPassword) });
       await handleStep(res.nextStep.signInStep);
     } catch (e) {
       setError(friendly(e));
@@ -106,8 +112,8 @@ export function LoginScreen() {
     if (error) setError(null);
   };
 
-  const signInDisabled = !email || !password;
-  const newPasswordDisabled = newPassword.length < 10;
+  const signInDisabled = !cleanEmail(email) || !cleanPassword(password);
+  const newPasswordDisabled = cleanPassword(newPassword).length < 10;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: L.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
