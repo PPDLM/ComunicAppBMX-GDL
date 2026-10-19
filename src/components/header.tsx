@@ -184,7 +184,7 @@ const RINGS = [
   { r: 236, o: 0.07 },
 ];
 
-/** Login / "Sin rol": big orange half-circle with rings and the BAMX logo (DISENO_LOGIN.md). */
+/** Login / "Sin rol": big orange half-circle with rings and the BAMX logo. */
 export function BrandHeader() {
   const { width } = useWindowDimensions();
   const cx = width / 2;

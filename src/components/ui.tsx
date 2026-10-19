@@ -1,5 +1,5 @@
 /**
- * Design system (design/01-sistema.md): BAMX logo palette, Plus Jakarta Sans, large touch targets.
+ * Design system: BAMX logo palette, Plus Jakarta Sans, large touch targets.
  * Red = the one main action, orange = brand / progress / selection, green = success only.
  */
 import * as Haptics from 'expo-haptics';

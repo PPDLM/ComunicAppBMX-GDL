@@ -22,7 +22,7 @@ import { Icon, type IconName } from './icons';
 
 const inExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
-/** BAMX logo palette (design/login/DISENO_LOGIN.md). */
+/** BAMX logo palette. */
 const L = {
   orange: '#DE860B',
   red: '#CF1226',
