@@ -20,7 +20,8 @@ confirma cuántos kilos fueron realmente útiles.
 | Reportes declarado vs útil, usuarios, forzar estado, cancelar, eliminar | Administrador | Pantalla principal |
 
 Choferes, Almacén e Inspección pueden trabajar **sin conexión**: la app guarda lo último
-que cargó y encola las notas/cambios; se envían solos cuando vuelve la señal.
+que cargó y encola las notas/cambios; se envían solos cuando vuelve la señal. Por seguridad,
+la sesión de un administrador se cierra si la app pasa 15 minutos en segundo plano.
 
 ## Arquitectura
 
@@ -49,9 +50,12 @@ Necesitas las credenciales de AWS configuradas (`aws configure`, región `us-eas
 npx ampx sandbox        # deja corriendo; despliega y vigila cambios en amplify/
 ```
 
-Para que todo el equipo use **el mismo** backend en la demo, despliega una rama en la consola de
-Amplify (conecta el repo → rama → despliegue) y comparte su `amplify_outputs.json`
-(`npx ampx generate outputs --app-id <id> --branch <rama>`). Un sandbox es personal.
+Un sandbox es personal. El backend compartido es la app de Amplify `d12iu4o6hrz5dr`: cada push
+a `main` lo despliega solo (ver `amplify.yml`). Para apuntar la app a ese backend sin sandbox:
+
+```bash
+npx ampx generate outputs --app-id d12iu4o6hrz5dr --branch main
+```
 
 ### 2. Crear el primer administrador
 
@@ -74,19 +78,24 @@ cada persona crea la suya al entrar por primera vez).
 ### 3. Abrir la app
 
 ```bash
-npx expo start          # Expo Go o development build
+npx expo start --go             # Expo Go, misma red Wi-Fi
+npx expo start --tunnel --go    # Expo Go desde cualquier red (para que el equipo pruebe)
 ```
+
+El proyecto incluye `expo-dev-client`, así que sin `--go` el QR intenta abrir un development
+build. Con Expo Go, el login usa `USER_PASSWORD_AUTH` (Expo Go no puede hacer SRP); el resto del
+equipo solo instala Expo Go y escanea el QR. El servidor tiene que seguir corriendo en tu máquina.
 
 ## Guion de demo (5 min)
 
 1. **Admin**: Usuarios → crea un Chofer, una persona de Almacén y una de Inspección.
-2. **Admin**: + Nueva donación "Walmart Av. Patria", dirección, "Hoy 12:00", asigna al chofer.
-3. **Chofer**: la ve en "Por recolectar" → abre en Google Maps/Waze → activa **modo avión** →
-   registra 3 productos (uno en "cajas" con kg estimados y uno con categoría "Otro"), foto de la
-   firma y de la lista → aparece "Pendiente de sincronizar" → quita modo avión → se envía solo.
+2. **Admin**: + Nueva donación "Walmart Av. Patria", dirección, día "Hoy" y hora 12:00, asigna al chofer.
+3. **Chofer**: la ve en "Mis recolecciones" → abre en Google Maps/Waze → activa **modo avión** →
+   "Registrar recolección": 3 productos (uno en "cajas" con kg estimados y uno con categoría "Otro"),
+   foto de la firma y de la lista → aparece "1 cambio por enviar" → quita modo avión → se envía solo.
 4. **Almacén**: "En camino" → "Área de llegada preparada" → "Marcar como descargada".
 5. **Inspección**: "Iniciar revisión" → ajusta kg útiles, descarta 1 producto con motivo y
-   caducidad, agrega un producto que no venía → "Guardar revisión y cerrar".
+   caducidad, agrega un producto que no venía → "Cerrar revisión" → "Guardar y cerrar".
 6. **Admin**: detalle con historial (quién/cuándo), fotos, y **Reportes** declarado vs útil,
    por categoría, por donante, motivos de descarte; exportar CSV.
 
@@ -96,8 +105,6 @@ npx expo start          # Expo Go o development build
   de `update` sobre `Donation` completo. Endurecerlo requiere una mutación personalizada.
 - Las fotos tomadas sin conexión quedan en la caché de la app hasta enviarse; si el sistema
   borra la caché antes de sincronizar, esa foto se pierde (las notas y productos no).
-- Fecha/hora se capturan como texto `AAAA-MM-DD HH:MM` con atajos (sin selector nativo,
-  para no agregar dependencias).
 - Reportes se calculan en el dispositivo; para miles de donaciones conviene una función/consulta
   agregada en el backend.
 - Notificaciones push: no implementadas (eran opcionales).
