@@ -11,7 +11,7 @@
     "aws-amplify": "^6.22.1",
     "expo": "~57.0.26",
     "expo-clipboard": "~57.0.2",
-    "expo-constants": "~57.0.20",
+    "expo-constants": "~58.0.12",
     "expo-dev-client": "~57.0.20",
     "expo-device": "~57.0.2",
     "expo-font": "~57.0.4",
