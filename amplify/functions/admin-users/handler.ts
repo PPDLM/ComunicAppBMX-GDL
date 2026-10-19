@@ -18,7 +18,6 @@ import type { Schema } from '../../data/resource';
 const ROLES = ['ADMIN', 'DRIVER', 'WAREHOUSE', 'INSPECTION'] as const;
 type Role = (typeof ROLES)[number];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let sdk: any;
 async function cognito() {
   if (!sdk) {
@@ -48,10 +47,8 @@ function assertEmail(email: string | null | undefined): string {
   return e;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function attr(user: any, name: string): string | undefined {
   const list = user.Attributes ?? user.UserAttributes ?? [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return list.find((a: any) => a.Name === name)?.Value;
 }
 
@@ -60,7 +57,6 @@ async function groupsOf(username: string): Promise<string[]> {
   const res = await client.send(
     new sdk.AdminListGroupsForUserCommand({ UserPoolId: poolId(), Username: username }),
   );
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (res.Groups ?? []).map((g: any) => g.GroupName as string);
 }
 
@@ -87,7 +83,6 @@ async function setRole(username: string, role: Role) {
 
 async function listUsers() {
   const { sdk, client } = await cognito();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const users: any[] = [];
   let token: string | undefined;
   do {

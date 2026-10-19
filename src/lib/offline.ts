@@ -13,7 +13,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { uploadData } from 'aws-amplify/storage';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import { api, errorMessage, isAlreadyExists, must } from './client';
@@ -103,7 +103,9 @@ export function useCachedQuery<T>(key: string, fetcher: () => Promise<T>) {
   const [fromCache, setFromCache] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const fetcherRef = useRef(fetcher);
-  fetcherRef.current = fetcher;
+  useLayoutEffect(() => {
+    fetcherRef.current = fetcher;
+  });
 
   const refresh = useCallback(async () => {
     setLoading(true);

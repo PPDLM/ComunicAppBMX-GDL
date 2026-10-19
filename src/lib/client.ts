@@ -27,7 +27,6 @@ export class ApiError extends Error {
 /** Throws if the GraphQL response has errors; returns data otherwise. */
 export function must<T>(res: Res<T>): T {
   if (res.errors && res.errors.length) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const e = res.errors[0] as any;
     throw new ApiError(e?.message ?? 'Error del servidor', e?.errorType);
   }

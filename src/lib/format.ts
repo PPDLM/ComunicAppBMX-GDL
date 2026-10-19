@@ -65,7 +65,6 @@ export const MAX = { short: 120, address: 300, long: 1000 };
  */
 export function cleanText(s: string | null | undefined, max = MAX.short): string {
   return (s ?? '')
-    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
     .replace(/[<>]/g, '')
     .replace(/[ \t]+/g, ' ')

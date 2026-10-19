@@ -11,11 +11,12 @@ const backend = defineBackend({
   adminUsers,
 });
 
+const { cfnUserPool, cfnUserPoolClient } = backend.auth.resources.cfnResources;
+
 cfnUserPool.adminCreateUserConfig = {
   allowAdminCreateUserOnly: true,
 };
 
-const { cfnUserPool, cfnUserPoolClient } = backend.auth.resources.cfnResources;
 cfnUserPoolClient.explicitAuthFlows = [
   ...(cfnUserPoolClient.explicitAuthFlows ?? []),
   'ALLOW_USER_PASSWORD_AUTH',
