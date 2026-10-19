@@ -66,5 +66,11 @@
   "allowScripts": {
     "esbuild@0.28.2": true,
     "esbuild@0.25.12": true
+  },
+  "overrides": {
+    "@aws-amplify/codegen-ui-react": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
   }
 }

@@ -1,5 +1,5 @@
-import DateTimePicker from '@expo/ui/community/datetime-picker';
-import React, { useEffect, useState } from 'react';
+import { DateTimePicker } from '@expo/ui/community/datetime-picker';
+import React, { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -100,9 +100,12 @@ export function DatePicker({
   onClose: () => void;
 }) {
   const [draft, setDraft] = useState(value);
-  useEffect(() => {
+  // Reset the draft whenever the sheet opens or the value changes (during render, not in an effect).
+  const [synced, setSynced] = useState({ visible, time: value.getTime() });
+  if (synced.visible !== visible || synced.time !== value.getTime()) {
+    setSynced({ visible, time: value.getTime() });
     if (visible) setDraft(value);
-  }, [visible, value]);
+  }
 
   if (Platform.OS === 'android') {
     if (!visible) return null;

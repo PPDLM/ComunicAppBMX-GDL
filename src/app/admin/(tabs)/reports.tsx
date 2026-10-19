@@ -57,44 +57,66 @@ function Bar({ label, value, max, color }: { label: string; value: number; max: 
   );
 }
 
+/** Closed donations in the range plus their items; on failure, the error message. */
+async function fetchReport(fromMs: number, toMs: number): Promise<Data | string> {
+  try {
+    const donations = (await allDonations()).filter((d) => {
+      const ts = new Date(d.scheduledAt).getTime();
+      return d.status === 'CLOSED' && ts >= fromMs && ts <= toMs;
+    });
+    const items: Record<string, DonationItem[]> = {};
+    for (let i = 0; i < donations.length; i += 8) {
+      const batch = donations.slice(i, i + 8);
+      const res = await Promise.all(batch.map((d) => itemsOf(d.id)));
+      batch.forEach((d, j) => (items[d.id] = res[j]));
+    }
+    return { donations, items };
+  } catch (e) {
+    return errorMessage(e);
+  }
+}
+
 export default function ReportsScreen() {
   const [period, setPeriod] = useState<Period>('month');
   const [custom, setCustom] = useState(() => ({ from: new Date(new Date().getFullYear(), new Date().getMonth(), 1), to: new Date() }));
   const [picking, setPicking] = useState<'from' | 'to' | null>(null);
   const [allCats, setAllCats] = useState(false);
   const [data, setData] = useState<Data | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const range = rangeOf(period, custom);
   const fromMs = startOfDay(range.from).getTime();
   const toMs = new Date(range.to).setHours(23, 59, 59, 999);
+  const key = `${fromMs}-${toMs}`;
+  const loading = loadedKey !== key || refreshing;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const donations = (await allDonations()).filter((d) => {
-        const ts = new Date(d.scheduledAt).getTime();
-        return d.status === 'CLOSED' && ts >= fromMs && ts <= toMs;
-      });
-      const items: Record<string, DonationItem[]> = {};
-      for (let i = 0; i < donations.length; i += 8) {
-        const batch = donations.slice(i, i + 8);
-        const res = await Promise.all(batch.map((d) => itemsOf(d.id)));
-        batch.forEach((d, j) => (items[d.id] = res[j]));
-      }
-      setData({ donations, items });
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setLoading(false);
+  const apply = (k: string, res: Data | string) => {
+    if (typeof res === 'string') setError(res);
+    else {
+      setData(res);
+      setError(null);
     }
-  }, [fromMs, toMs]);
+    setLoadedKey(k);
+  };
 
   // Recalculates whenever the period changes (no "Actualizar" button).
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+    fetchReport(fromMs, toMs).then((res) => {
+      if (active) apply(`${fromMs}-${toMs}`, res);
+    });
+    return () => {
+      active = false;
+    };
+  }, [fromMs, toMs]);
+
+  const load = async () => {
+    setRefreshing(true);
+    apply(key, await fetchReport(fromMs, toMs));
+    setRefreshing(false);
+  };
+
   useFocusEffect(useCallback(() => () => setPicking(null), []));
 
   const r = useMemo(() => {

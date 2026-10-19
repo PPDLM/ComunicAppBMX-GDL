@@ -75,12 +75,15 @@ async function loadUser(): Promise<SessionUser | null> {
   };
 }
 
+const toState = (user: SessionUser | null): SessionState =>
+  user ? { status: 'signedIn', user } : { status: 'signedOut' };
+
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SessionState>({ status: 'loading' });
 
   const refresh = useCallback(async () => {
     const user = await loadUser();
-    setState(user ? { status: 'signedIn', user } : { status: 'signedOut' });
+    setState(toState(user));
   }, []);
 
   const signOut = useCallback(async () => {
@@ -111,9 +114,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [role, signOut]);
 
   useEffect(() => {
-    refresh();
+    void loadUser().then((user) => setState(toState(user)));
     const stop = Hub.listen('auth', ({ payload }) => {
-      if (payload.event === 'signedIn' || payload.event === 'signedOut') refresh();
+      if (payload.event === 'signedIn' || payload.event === 'signedOut') void refresh();
     });
     return stop;
   }, [refresh]);

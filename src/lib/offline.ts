@@ -92,6 +92,20 @@ export async function cacheGet<T>(key: string): Promise<Cached<T> | null> {
   }
 }
 
+type FetchResult<T> = { data: T; savedAt: string; fromCache: boolean } | { error: string };
+
+async function fetchOrCache<T>(key: string, fetcher: () => Promise<T>): Promise<FetchResult<T>> {
+  try {
+    const fresh = await fetcher();
+    await cacheSet(key, fresh);
+    return { data: fresh, savedAt: new Date().toISOString(), fromCache: false };
+  } catch (e) {
+    const cached = await cacheGet<T>(key);
+    if (cached) return { data: cached.data, savedAt: cached.savedAt, fromCache: true };
+    return { error: errorMessage(e) };
+  }
+}
+
 /**
  * Fetches data online and caches it; falls back to the cache when the fetch fails.
  * `fromCache` + `savedAt` let the screen show "sin conexión — datos de HH:MM".
@@ -107,33 +121,32 @@ export function useCachedQuery<T>(key: string, fetcher: () => Promise<T>) {
     fetcherRef.current = fetcher;
   });
 
+  const apply = useCallback((r: FetchResult<T>) => {
+    if ('error' in r) setError(r.error);
+    else {
+      setData(r.data);
+      setSavedAt(r.savedAt);
+      setFromCache(r.fromCache);
+      setError(null);
+    }
+    setLoading(false);
+  }, []);
+
   const refresh = useCallback(async () => {
     setLoading(true);
-    try {
-      const fresh = await fetcherRef.current();
-      setData(fresh);
-      setFromCache(false);
-      setError(null);
-      setSavedAt(new Date().toISOString());
-      await cacheSet(key, fresh);
-    } catch (e) {
-      const cached = await cacheGet<T>(key);
-      if (cached) {
-        setData(cached.data);
-        setSavedAt(cached.savedAt);
-        setFromCache(true);
-        setError(null);
-      } else {
-        setError(errorMessage(e));
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [key]);
+    apply(await fetchOrCache(key, fetcherRef.current));
+  }, [key, apply]);
 
+  // Initial load; state is only set once the fetch resolves (and not after unmount or a key change).
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    let active = true;
+    void fetchOrCache(key, fetcherRef.current).then((r) => {
+      if (active) apply(r);
+    });
+    return () => {
+      active = false;
+    };
+  }, [key, apply]);
 
   // Refresh when the queue finishes syncing so the screen shows server state.
   useEffect(() => onQueueChange((s) => s.justSynced && refresh()), [refresh]);
